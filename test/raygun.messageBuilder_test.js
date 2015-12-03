@@ -1,206 +1,280 @@
 'use strict';
 
+var test = require("tap").test;
 var MessageBuilder = require('../lib/raygun.messageBuilder.js');
+var semver = require('semver');
 
-/*
-  ======== A Handy Little Nodeunit Reference ========
-  https://github.com/caolan/nodeunit
+test('basic builder tests', function (t) {
+  var builder = new MessageBuilder();
+  var message = builder.build();
 
-  Test methods:
-    test.expect(numAssertions)
-    test.done()
-  Test assertions:
-    test.ok(value, [message])
-    test.equal(actual, expected, [message])
-    test.notEqual(actual, expected, [message])
-    test.deepEqual(actual, expected, [message])
-    test.notDeepEqual(actual, expected, [message])
-    test.strictEqual(actual, expected, [message])
-    test.notStrictEqual(actual, expected, [message])
-    test.throws(block, [error], [message])
-    test.doesNotThrow(block, [error], [message])
-    test.ifError(value)
-*/
+  t.test('messageBuild', function (tt) {
+    tt.ok(message);
+    tt.end();
+  });
 
-exports['basic builder tests'] = {
-  setUp: function (done) {
-    var builder = new MessageBuilder();
-    this.message = builder.build();
-    done();
-  },
-  messageBuild: function (test) {
-    test.ok(this.message);
-    test.done();
-  },
-  builtMessageIncludesOccurredOn: function (test) {
-    test.ok(this.message.occurredOn);
-    test.done();
-  },
-  messageIncludesDetails: function (test) {
-    test.ok(this.message.details);
-    test.done();
-  },
-  messageIncludesClientDetails: function (test) {
-    test.ok(this.message.details.client, 'provider information not included');
-    test.ok(this.message.details.client.name, 'provider name not included');
-    test.ok(this.message.details.client.version, 'provider version not included');
-    test.done();
-  },
-  setMachineNameIncluded: function (test) {
+  t.test('occurred on', function (tt) {
+    tt.ok(message.occurredOn);
+    tt.end();
+  });
+
+  t.test('details', function (tt) {
+    tt.ok(message.details);
+    tt.end();
+  });
+  
+  t.test('client details', function (tt) {
+    tt.ok(message.details.client);
+    tt.ok(message.details.client.name);
+    tt.ok(message.details.client.version);
+    tt.end();
+  });
+  
+  t.test('machine name', function (tt) {
     var builder = new MessageBuilder();
     builder.setMachineName('server1');
     var message = builder.build();
-    test.equals(message.details.machineName, 'server1');
-    test.done();
-  },
-  defaultMachineNameIncluded: function (test) {
+    tt.equals(message.details.machineName, 'server1');
+    tt.end();
+  });
+  
+  t.test('default machine name', function (tt) {
     var builder = new MessageBuilder();
     builder.setMachineName();
     var message = builder.build();
-    test.ok(message.details.machineName);
-    test.done();
-  }
-};
+    tt.ok(message.details.machineName);
+    tt.end();
+  });
+  
+  t.end();
+});
 
-exports['error builder tests'] = {
-  setUp: function (done) {
-    var builder = new MessageBuilder();
-    builder.setErrorDetails(new Error());
-    this.message = builder.build();
-    done();
-  },
-  messageIncludesError: function (test) {
-    test.ok(this.message.details.error);
-    test.done();
-  },
-  messageIncludesErrorStackTrace: function (test) {
-    test.ok(this.message.details.error.stackTrace);
-    test.equal(this.message.details.error.stackTrace.length, 10);
-    test.done();
-  },
-  messageIncludesErrorStackTraceCorrectly: function (test) {
-    var stackTrace = this.message.details.error.stackTrace;
+test('error builder tests', function (t) {
+  var builder = new MessageBuilder();
+  builder.setErrorDetails(new Error());
+  var message = builder.build();
+  
+  t.test('error', function (tt) {
+    tt.ok(message.details.error);
+    tt.end();
+  });
+  
+  t.test('stack trace', function (tt) {
+    tt.ok(message.details.error.stackTrace);
+    var lines = 8;
+
+    if(semver.satisfies(process.version, '>=4.0.0')) {
+      lines = 10;
+    }
+
+    tt.equal(message.details.error.stackTrace.length, lines);
+    tt.end();
+  });
+  
+  t.test('stack trace correct', function (tt) {
+    var stackTrace = message.details.error.stackTrace;
     stackTrace.forEach(function (stackTraceLine) {
-      test.ok(stackTraceLine.lineNumber);
-      test.ok(stackTraceLine.className);
-      test.ok(stackTraceLine.fileName);
-      test.ok(stackTraceLine.methodName);
+      tt.ok(stackTraceLine.lineNumber);
+      tt.ok(stackTraceLine.className);
+      tt.ok(stackTraceLine.fileName);
+      tt.ok(stackTraceLine.methodName);
     });
-    test.done();
-  },
-  messageIncludesTheErrorMessage: function (test) {
+    tt.end();
+  });
+  
+  t.test('error message correct', function (tt) {
     var errorMessage = 'WarpCoreAlignment';
     var builder = new MessageBuilder();
     builder.setErrorDetails(new Error(errorMessage));
     var message = builder.build();
-    test.ok(message.details.error.message);
-    test.equals(message.details.error.message, errorMessage);
-    test.done();
-  },
-  messageIncludeTheErrorMessageWhenNoneProvided: function (test) {
-    test.ok(this.message.details.error.message);
-    test.equals(this.message.details.error.message, 'NoMessage');
-    test.done();
-  },
-  messageIncludesClassName: function (test) {
-    test.ok(this.message.details.error.className);
-    test.equals(this.message.details.error.className, 'Error');
-    test.done();
-  }
-};
+    tt.ok(message.details.error.message);
+    tt.equals(message.details.error.message, errorMessage);
+    tt.end();
+  });
+  
+  t.test('default error message correct', function (tt) {
+    tt.ok(message.details.error.message);
+    tt.equals(message.details.error.message, 'NoMessage');
+    tt.end();
+  });
+  
+  t.test('class name correct', function (tt) {
+    tt.ok(message.details.error.className);
+    tt.equals(message.details.error.className, 'Error');
+    tt.end();
+  });
+});
 
-exports['environment builder tests'] = {
-  setUp: function (done) {
-    var builder = new MessageBuilder();
-    builder.setEnvironmentDetails();
-    this.message = builder.build();
-    done();
-  },
-  environmentDetailsSet: function (test) {
-    test.ok(this.message.details.environment);
-    test.done();
-  },
-  processorCountSet: function (test) {
-    test.ok(this.message.details.environment.processorCount);
-    test.done();
-  },
-  osVersionSet: function (test) {
-    test.ok(this.message.details.environment.osVersion);
-    test.done();
-  },
-  cpuSet: function (test) {
-    test.ok(this.message.details.environment.cpu);
-    test.done();
-  },
-  architectureSet: function (test) {
-    test.ok(this.message.details.environment.architecture);
-    test.done();
-  },
-  totalPhysicalMemorySet: function (test) {
-    test.ok(this.message.details.environment.totalPhysicalMemory);
-    test.done();
-  },
-  availablePhysicalMemorySet: function (test) {
-    test.ok(this.message.details.environment.availablePhysicalMemory);
-    test.done();
-  },
-  utcOffsetIncluded: function (test) {
-    test.ok(this.message.details.environment.utcOffset);
-    test.done();
-  }
-};
+test('environment builder', function (t) {
+  var builder = new MessageBuilder();
+  builder.setEnvironmentDetails();
+  var message = builder.build();
+  
+  // missing utcOffset for now as need to find a good way to test for its existence
+  var properties = ['processorCount', 'osVersion', 'cpu', 'architecture', 'totalPhysicalMemory', 'availablePhysicalMemory'];
+  
+  t.plan(properties.length + 1);
+  
+  t.ok(message.details.environment);
+  
+  properties.forEach(function (i) {
+    t.ok(message.details.environment[i], i + ' should be set');
+  });
+});
 
-exports['custom data builder tests'] = {
-  allowCustomDataToBeSet: function (test) {
+test('custom data builder', function (t) {
+  
+  t.test('custom data is set', function (tt) {
     var builder = new MessageBuilder();
     builder.setUserCustomData({ foo: 'bar' });
     var message = builder.build();
-    test.ok(message.details.userCustomData);
-    test.equals(message.details.userCustomData.foo, 'bar');
-    test.done();
-  },
-  allowEmptyCustomDataToBeSet: function (test) {
+  
+    tt.ok(message.details.userCustomData);
+    tt.equals(message.details.userCustomData.foo, 'bar');
+    
+    tt.end();
+  });
+
+  t.test('allow empty custom data', function (tt) {
     var builder = new MessageBuilder();
     builder.setUserCustomData();
     var message = builder.build();
-    test.equals(message.details.userCustomData, undefined);
-    test.done();
-  }
-};
+    tt.equals(message.details.userCustomData, undefined);
+    tt.end();
+  });
+  
+  t.end();
+});
 
-exports['express request builder tests'] = {
-  setUp: function (done) {
-    var builder = new MessageBuilder();
-    builder.setRequestDetails({ host: 'localhost' });
-    this.message = builder.build();
-    done();
-  },
-  hostNameIsSet: function (test) {
-    test.ok(this.message.details.request.hostName);
-    test.done();
-  }
-};
+test('express4 request builder', function (t) {
+  var builder = new MessageBuilder();
+  builder.setRequestDetails({ hostname: 'localhost' });
+  var message = builder.build();
+  
+  t.ok(message.details.request.hostName);
+  t.end();
+});
 
-exports['user and version builder tests'] = {
-  userSet: function (test) {
+test('express3 request builder', function (t) {
+  var builder = new MessageBuilder();
+  builder.setRequestDetails({ host: 'localhost' });
+  var message = builder.build();
+
+  t.ok(message.details.request.hostName);
+  t.end();
+});
+
+test('user and version builder tests', function (t) {
+  t.test('simple user', function (tt) {
     var builder = new MessageBuilder();
     builder.setUser('testuser');
-    this.message = builder.build();
-    test.equals(this.message.details.user.identifier, 'testuser');
-    test.done();
-  },
-  userSetFunction: function (test) {
+    var message = builder.build();
+    tt.equals(message.details.user.identifier, 'testuser');
+    tt.end();
+  });
+  
+  t.test('user function', function (tt) {
     var builder = new MessageBuilder();
     builder.setUser(function() { return 'testuser'; });
-    this.message = builder.build();
-    test.equals(this.message.details.user.identifier, 'testuser');
-    test.done();
-  },
-  versionSet: function (test) {
+    var message = builder.build();
+    tt.equals(message.details.user.identifier, 'testuser');
+    tt.end();
+  });
+  
+  t.test('user function returning object', function (tt) {
+    var builder = new MessageBuilder();
+    builder.setUser(function() { return {identifier: 'testuser', email: 'test@example.com', notSupportedProp: 'ignore'}; });
+    var message = builder.build();
+    tt.equals(message.details.user.identifier, 'testuser');
+    tt.equals(message.details.user.email, 'test@example.com');
+    tt.equals(message.details.user.notSupportedProp, undefined);
+    tt.end();
+  });
+
+  t.test('set user with object', function (tt) {
+    var builder = new MessageBuilder();
+    builder.setUser({identifier: 'testuser', email: 'test@example.com', notSupportedProp: 'ignore'});
+    var message = builder.build();
+    tt.equals(message.details.user.identifier, 'testuser', 'identifier should be set to the one in the object we returned from the user function');
+    tt.equals(message.details.user.email, 'test@example.com', 'email should be set to the one in the object we returned from the user function');
+    tt.equals(message.details.user.notSupportedProp, undefined, 'should skip unknown properties');
+    tt.end();
+  });
+
+  t.test('version set', function (tt) {
     var builder = new MessageBuilder();
     builder.setVersion('1.0.0.0');
-    this.message = builder.build();
-    test.equals(this.message.details.version, '1.0.0.0');
-    test.done();
-  }
-};
+    var message = builder.build();
+    tt.equals(message.details.version, '1.0.0.0');
+    tt.end();
+  });
+  
+  t.end();
+});
+
+test('filter keys tests', function (t) {
+  var builder = new MessageBuilder({ filters: ['username', 'password', 'X-ApiKey'] });
+  var body = { username: 'admin@raygun.io', password: 'nice try', remember: true };
+  var queryString = { username: 'admin@raygun.io', remember: false };
+  var headers = { 'X-ApiKey': '123456', 'Host': 'app.raygun.io' };
+  builder.setRequestDetails({ body: body, query: queryString, headers: headers });
+  var message = builder.build();
+  
+  t.test('form is filtered', function (tt) {
+    tt.equals(message.details.request.form.username, undefined);
+    tt.equals(message.details.request.form.password, undefined);
+    tt.equals(message.details.request.form.remember, true);
+    tt.end();
+  });
+  
+  t.test('query string is filtered', function (tt) {
+    tt.equals(message.details.request.queryString.username, undefined);
+    tt.equals(message.details.request.queryString.password, undefined);
+    tt.equals(message.details.request.queryString.remember, false);
+    tt.end();
+  });
+  
+  t.test('headers are filtered', function (tt) {
+    tt.equals(message.details.request.headers['X-ApiKey'], undefined);
+    tt.equals(message.details.request.headers['Host'], 'app.raygun.io');
+    tt.end();
+  });
+});
+
+test('custom tags', function (t) {
+  t.test('with array', function(tt) {
+    var builder = new MessageBuilder();
+    builder.setTags(['a', 'bb', 'c']);
+    var message = builder.build();
+    
+    tt.deepEqual(message.details.tags, ['a', 'bb', 'c']);
+    tt.end();
+  });
+  
+  t.test('with null', function(tt) {
+    var builder = new MessageBuilder();
+    builder.setTags(null);
+    var message = builder.build();
+    
+    tt.notOk(message.details.tags);
+    tt.end();
+  });
+  
+  t.test('with undefined', function(tt) {
+    var builder = new MessageBuilder();
+    builder.setTags(undefined);
+    var message = builder.build();
+    
+    tt.notOk(message.details.tags);
+    tt.end();
+  });
+  
+  t.test('with non-array type', function(tt) {
+    var builder = new MessageBuilder();
+    builder.setTags(5);
+    var message = builder.build();
+    
+    tt.notOk(message.details.tags);
+    tt.end();
+  });
+});
